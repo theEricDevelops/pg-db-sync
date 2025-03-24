@@ -1,0 +1,27 @@
+{
+  "source_db": {
+    "host": "source_host",
+    "port": 5432,
+    "database": "source_database",
+    "user": "source_user",
+    "password": "source_password"
+  },
+  "target_db": {
+    "host": "target_host",
+    "port": 5432,
+    "database": "target_database",
+    "user": "target_user",
+    "password": "target_password"
+  },
+  "sync": {
+    "tables": [
+      {
+        "source": "source_table",
+        "target": "target_table",
+        "columns": ["column1", "column2", "column3"]
+      }
+    ],
+    "batch_size": 1000,
+    "sync_interval": "60s"
+  }
+}
