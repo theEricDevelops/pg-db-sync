@@ -197,6 +197,8 @@ class DatabaseUtility:
             column_names = ", ".join(columns)
             query = f"INSERT INTO {table_name} ({column_names}) VALUES ({placeholders});"
 
+            total_inserts = len(data)
+            logger.info(f"Inserting {total_inserts} rows into table '{table_name}'")
             insert_count = 0
             for row in data:
                 # Convert values to a list in the same order as columns
@@ -206,7 +208,7 @@ class DatabaseUtility:
                 
                 # Log progress for large inserts
                 if insert_count % 100 == 0:
-                    logger.debug(f"Inserted {insert_count} rows into table '{table_name}' so far...")
+                    logger.debug(f"Inserted {insert_count} rows of {total_inserts} into table '{table_name}' so far...")
                     
             logger.info(f"Inserted {insert_count} rows into table '{table_name}'.")
         except Exception as e:
