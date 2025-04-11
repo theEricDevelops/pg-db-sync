@@ -24,6 +24,8 @@ def load_config(config_path: str = "config.json") -> Dict:
             "target_db":target_db_config
         }
     }
+    config["database"]["source_db"]["dburl"] = os.getenv("DATABASE_URL_SOURCE")
+    config["database"]["target_db"]["dburl"] = os.getenv("DATABASE_URL_TARGET")
 
     CONFIG_DIR = os.path.join(PROJECT_ROOT, "config")
     config_path = os.path.join(CONFIG_DIR, config_path)

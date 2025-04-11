@@ -1,6 +1,8 @@
 import asyncio
 import psycopg2
 import psycopg2.extras
+import subprocess
+import os
 from typing import List, Dict, Any, Tuple
 from utils.logger import Logger
 
@@ -15,6 +17,8 @@ class DatabaseUtility:
             db_config (Dict[str, Any]): A dictionary containing database connection parameters.
         """
         self.db_config = db_config
+        self.db_url = db_config.get("dburl")
+        self.pg_db_url = f"postgresql://{self.db_config['user']}:{self.db_config['password']}@{self.db_config['host']}:{self.db_config['port']}/postgres"
         self.connection = None
 
     async def connect(self) -> None:
@@ -369,3 +373,106 @@ class DatabaseUtility:
             except Exception as inner_e:
                 logger.error(f"Emergency column query also failed: {inner_e}")
                 return []
+    
+    async def dump_database(self, dump_file: str = "db_dump.sql"):
+        """Dumps the source database to a file."""
+
+        logger.info("Dumping database...")
+        dump_command = [
+            "pg_dump",
+            f"--host={self.db_config['host']}",
+            f"--port={self.db_config['port']}",
+            f"--username={self.db_config['user']}",
+            f"--dbname={self.db_config['dbname']}",
+            "-Fc", # Using custom format for easier restoration
+            "-f", dump_file
+        ]
+
+        if self.db_config['password']:
+            env = os.environ.copy()
+            env["PGPASSWORD"] = self.db_config['password']
+        
+        try:
+            subprocess.run(dump_command, check=True, env=env)
+            logger.info("Database dump completed successfully.")
+            return dump_file
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Error dumping database: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error during database dump: {e}")
+            return None
+    
+    async def restore_database(self, dump_file: str):
+        """Restores the source database from a file."""
+        logger.info("Restoring database...")
+        
+        restore_command = [
+            "pg_restore",
+            "--clean",
+            "--create",
+            f"--host={self.db_config['host']}",
+            f"--port={self.db_config['port']}",
+            f"--username={self.db_config['user']}",
+            f"--dbname=postgres",
+            dump_file
+        ]
+
+        if self.db_config['password']:
+            env = os.environ.copy()
+            env["PGPASSWORD"] = self.db_config['password']
+
+        try:
+            subprocess.run(restore_command, check=True, env=env)
+            logger.info("Database restore completed successfully.")
+            return True
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Error restoring database: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error during database restore: {e}")
+            return False
+    
+    async def drop_database(self):
+        """Drops the target database."""
+        logger.info("Dropping target database...")
+
+        drop_command = [
+            "psql",
+            self.pg_db_url,
+            "-c",
+            f"DROP DATABASE IF EXISTS \"{self.db_config['dbname']}\";"
+        ]
+
+        try:
+            subprocess.run(drop_command, check=True)
+            logger.info("Target database dropped successfully.")
+            return True
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Error dropping target database: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error during database drop: {e}")
+            return False
+    
+    async def create_database(self):
+        """Creates the target database."""
+        logger.info("Creating target database...")
+        create_command = [
+            "psql",
+            self.pg_db_url,
+            "-c",
+            f"CREATE DATABASE \"{self.db_config['dbname']}\";"
+        ]
+
+        try:
+            subprocess.run(create_command, check=True)
+            logger.info("Target database created successfully.")
+            return True
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Error creating target database: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error during database creation: {e}")
+            return False
+
